@@ -49,7 +49,21 @@ Previous releases are available for download as XPI files from [our releases pag
 
 ### Installing this fork
 
-This fork's changes aren't published on the Mozilla add-on page, so it has to be built and loaded manually:
+This fork's changes aren't published on the Mozilla add-on page. Download the built `passff.xpi` from the
+[latest release](https://github.com/AuthenticSm1les/passff/releases/latest) instead of building it yourself — the
+[zx2c4 pass repository](#zx2c4-pass-repository) and [host application](#host-application) steps above still apply the
+same way.
+
+The XPI is **unsigned**, so how you install it depends on your Firefox:
+
+- **Developer Edition, Nightly, or ESR**: set `xpinstall.signatures.required` to `false` in `about:config` (one-time),
+  then open the downloaded `passff.xpi` directly, or drag it into a Firefox window, to install it permanently.
+- **Any Firefox** (including regular Release, which enforces signing and can't use the option above): open
+  `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…** → select the downloaded `passff.xpi`. This
+  works everywhere without changing any settings, but has to be repeated after every Firefox restart, since Firefox
+  discards temporary add-ons on exit.
+
+If you'd rather build from source (e.g. to try unreleased changes):
 
 ```sh
 git clone https://github.com/AuthenticSm1les/passff
@@ -58,14 +72,7 @@ npm install
 make
 ```
 
-This produces `bin/testing/passff.xpi`. Since it isn't signed, load it as a temporary add-on:
-
-1. Open `about:debugging#/runtime/this-firefox` in Firefox.
-2. Click **Load Temporary Add-on…** and select `build/testing/manifest.json` (or the `.xpi`).
-
-Temporary add-ons are removed when Firefox restarts, so you'll need to repeat this after every restart, or package/self-sign
-the XPI if you want a persistent install. The [zx2c4 pass repository](#zx2c4-pass-repository) and
-[host application](#host-application) steps above still apply the same way.
+This produces `bin/testing/passff.xpi`, installed the same way as above.
 
 ### A graphical _pinentry_ program
 
