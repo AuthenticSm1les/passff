@@ -36,8 +36,13 @@ This extension requires **[zx2c4 pass](http://www.zx2c4.com/projects/password-st
 
 ### Host application
 
-For the extension to communicate with your system's `pass` script, you need to install what's called the host application from [the official git repository](https://codeberg.org/PassFF/passff-host).
+For the extension to communicate with your system's `pass` script, you need to install what's called the host application.
 The host application allows the extension to communicate with `pass` on your system.
+
+If you're installing **this fork**, use [AuthenticSm1les/passff-host](https://github.com/AuthenticSm1les/passff-host)
+instead of the official host — it's identical except that it also whitelists this fork's extension ID (see
+[Installing this fork](#installing-this-fork) below for why that's needed). Otherwise, install the
+[official host application](https://codeberg.org/PassFF/passff-host).
 
 ### PassFF extension
 
@@ -59,15 +64,18 @@ Starting with v1.24.1, releases are **signed by Mozilla** (self-distribution/"un
 
 > **This fork uses its own extension ID** (`passff-asktosave@authenticsm1les`), separate from upstream PassFF's
 > (`passff@invicem.pro`), since that ID is registered under the upstream maintainers' Mozilla account and can't be
-> used to sign this fork. If you already have [passff-host](https://codeberg.org/PassFF/passff-host) installed, its
-> native messaging manifest only whitelists the old ID by default — add the new one or the extension won't be able
-> to reach `pass` at all. Edit the host's manifest (commonly
-> `/usr/lib/mozilla/native-messaging-hosts/passff.json` or `/usr/share/passff/passff.json` on Linux; see
-> passff-host's docs for other platforms) so `allowed_extensions` includes both:
+> used to sign this fork. This means the native messaging host needs to know about the new ID, or the extension
+> installs fine but can't reach `pass` at all:
 >
-> ```json
-> "allowed_extensions": ["passff@invicem.pro", "passff-asktosave@authenticsm1les"]
-> ```
+> - **Fresh install**: use [AuthenticSm1les/passff-host](https://github.com/AuthenticSm1les/passff-host) instead of
+>   the official host — see [Host application](#host-application) above. Nothing else to configure.
+> - **Already have the official passff-host installed**: either switch to the fork above (safe to run over an
+>   existing install — it's the same script/host, just with the extra ID), or manually add the new ID to the
+>   existing manifest's `allowed_extensions` (commonly `/usr/lib/mozilla/native-messaging-hosts/passff.json` or
+>   `/usr/share/passff/passff.json` on Linux; see passff-host's docs for other platforms):
+>   ```json
+>   "allowed_extensions": ["passff@invicem.pro", "passff-asktosave@authenticsm1les"]
+>   ```
 
 If you'd rather build from source (e.g. to try unreleased changes), the result is **unsigned**, so it can only be
 loaded as a temporary add-on (`about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…**, redone after every
