@@ -197,6 +197,18 @@
   "passff_prefs_autofill_blacklist_label": {
     "message": "Don't auto fill if tab's URL contains one of the strings (comma-separated)"
   },
+  "passff_prefs_ask_to_save_label": {
+    "message": "Offer to save new or changed passwords after a successful login"
+  },
+  "passff_prefs_ask_to_save_blacklist_label": {
+    "message": "Never offer to save passwords for these hostnames (comma-separated)"
+  },
+  "passff_prefs_ask_to_save_entry_template_description": {
+    "message": "Controls where new entries created via \"ask to save password\" are placed in the store. Use `<url>` for the site's hostname and `<login>` for the username. For example, `www/<url>/<login>` stores a login for \"student\" on \"example.com\" as `www/example.com/student`."
+  },
+  "passff_prefs_ask_to_save_entry_template_label": {
+    "message": "New entry path template"
+  },
   "passff_prefs_check_auto_label": {
     "message": "Deactivate URL security checks when filling manually"
   },
@@ -334,6 +346,30 @@
   },
   "passff_no_entries_found": {
     "message": "No entries matching this URL."
+  },
+  "passff_savepassword_title_new": {
+    "message": "Save password for $1?"
+  },
+  "passff_savepassword_title_update": {
+    "message": "Update saved password for $1?"
+  },
+  "passff_savepassword_username_label": {
+    "message": "Username"
+  },
+  "passff_savepassword_password_label": {
+    "message": "Password"
+  },
+  "passff_savepassword_toggle_password": {
+    "message": "Show/hide password"
+  },
+  "passff_savepassword_save_button": {
+    "message": "Save"
+  },
+  "passff_savepassword_not_now_button": {
+    "message": "Not now"
+  },
+  "passff_savepassword_never_button": {
+    "message": "Never for this site"
   },
   "passff_checks_url_curr": {
     "message": "The URL of the current website:"

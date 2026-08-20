@@ -55,3 +55,33 @@ test("doAllSecurityChecks", () => {
     domain: false,
   });
 });
+
+describe("loginLikelySucceeded", () => {
+  const origin = "https://example.com/login";
+
+  it("treats a same-URL page that still shows a password field as failed", () => {
+    expect(PageHelpers.loginLikelySucceeded(origin, origin, true)).toBe(false);
+  });
+
+  it("treats a same-URL page without a password field as succeeded", () => {
+    // e.g. an SPA that swaps the login form out for a dashboard in place
+    expect(PageHelpers.loginLikelySucceeded(origin, origin, false)).toBe(true);
+  });
+
+  it("treats navigation away as succeeded, even if a password field remains", () => {
+    // e.g. landing on a page that happens to have an unrelated password field
+    expect(
+      PageHelpers.loginLikelySucceeded(
+        "https://example.com/dashboard",
+        origin,
+        true,
+      ),
+    ).toBe(true);
+  });
+
+  it("ignores the URL fragment when comparing", () => {
+    expect(
+      PageHelpers.loginLikelySucceeded(origin + "#panel=2", origin, true),
+    ).toBe(false);
+  });
+});

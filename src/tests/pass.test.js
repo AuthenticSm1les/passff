@@ -242,6 +242,166 @@ test("hostMatchQuality", () => {
   ).toBe(101);
 });
 
+describe("buildDefaultEntryName", () => {
+  const url = "https://accounts.example.com/login";
+
+  it("defaults to the store root when there's no context", () => {
+    expect(PassHelpers.buildDefaultEntryName(url, undefined)).toBe(
+      "/accounts.example.com",
+    );
+  });
+
+  it("defaults to the store root for an empty candidate list", () => {
+    expect(PassHelpers.buildDefaultEntryName(url, [])).toBe(
+      "/accounts.example.com",
+    );
+  });
+
+  it("nests under the matched context's directory", () => {
+    let context = { fullKey: "/work/example.com" };
+    expect(PassHelpers.buildDefaultEntryName(url, context)).toBe(
+      "/work/accounts.example.com",
+    );
+  });
+
+  it("uses the first item when given a list of candidates", () => {
+    let candidates = [
+      { fullKey: "/work/example.com" },
+      { fullKey: "/personal/example.com" },
+    ];
+    expect(PassHelpers.buildDefaultEntryName(url, candidates)).toBe(
+      "/work/accounts.example.com",
+    );
+  });
+});
+
+describe("replaceLoginInStoredText", () => {
+  it("replaces an explicit login field, keeping other lines untouched", () => {
+    let text = "hunter2\nlogin: student\nnotes: keep me\n";
+    expect(PassHelpers.replaceLoginInStoredText(text, "otheruser")).toBe(
+      "hunter2\nlogin: otheruser\nnotes: keep me\n",
+    );
+  });
+
+  it("matches other configured login field names, not just 'login'", () => {
+    // default loginFieldNames includes "user"
+    let text = "hunter2\nuser: student\nnotes: keep me";
+    expect(PassHelpers.replaceLoginInStoredText(text, "otheruser")).toBe(
+      "hunter2\nuser: otheruser\nnotes: keep me",
+    );
+  });
+
+  it("replaces the implicit line-2 login when no field is named", () => {
+    let text = "hunter2\nstudent\nhttps://example.com";
+    expect(PassHelpers.replaceLoginInStoredText(text, "otheruser")).toBe(
+      "hunter2\notheruser\nhttps://example.com",
+    );
+  });
+
+  it("appends a login line when none can be identified", () => {
+    let text = "hunter2\notpauth: otpauth://totp/x?secret=ABC";
+    expect(PassHelpers.replaceLoginInStoredText(text, "otheruser")).toBe(
+      "hunter2\notpauth: otpauth://totp/x?secret=ABC\nlogin: otheruser",
+    );
+  });
+
+  it("appends a login line for a password-only entry", () => {
+    expect(PassHelpers.replaceLoginInStoredText("hunter2", "otheruser")).toBe(
+      "hunter2\nlogin: otheruser",
+    );
+  });
+});
+
+describe("buildEntryNameFromTemplate", () => {
+  const url = "https://practicetestautomation.com/login";
+
+  it("substitutes <url> and <login> as given in the example template", () => {
+    expect(
+      PassHelpers.buildEntryNameFromTemplate("www/<url>/<login>", {
+        url,
+        login: "student",
+      }),
+    ).toBe("/www/practicetestautomation.com/student");
+  });
+
+  it("works with just <url>", () => {
+    expect(
+      PassHelpers.buildEntryNameFromTemplate("<url>", {
+        url,
+        login: "student",
+      }),
+    ).toBe("/practicetestautomation.com");
+  });
+
+  it("works with just <login>", () => {
+    expect(
+      PassHelpers.buildEntryNameFromTemplate("accounts/<login>", {
+        url,
+        login: "student",
+      }),
+    ).toBe("/accounts/student");
+  });
+
+  it("works with a literal template using neither placeholder", () => {
+    expect(
+      PassHelpers.buildEntryNameFromTemplate("misc/logins", {
+        url,
+        login: "student",
+      }),
+    ).toBe("/misc/logins");
+  });
+
+  it("falls back to the hostname for an empty template", () => {
+    expect(
+      PassHelpers.buildEntryNameFromTemplate("", { url, login: "student" }),
+    ).toBe("/practicetestautomation.com");
+    expect(
+      PassHelpers.buildEntryNameFromTemplate(undefined, {
+        url,
+        login: "student",
+      }),
+    ).toBe("/practicetestautomation.com");
+  });
+
+  it("collapses extra/duplicate slashes and trims whitespace segments", () => {
+    expect(
+      PassHelpers.buildEntryNameFromTemplate("  //www//<url>///<login>/ ", {
+        url,
+        login: "student",
+      }),
+    ).toBe("/www/practicetestautomation.com/student");
+  });
+
+  it("sanitizes a login containing slashes instead of creating subdirectories", () => {
+    expect(
+      PassHelpers.buildEntryNameFromTemplate("www/<url>/<login>", {
+        url,
+        login: "weird/name",
+      }),
+    ).toBe("/www/practicetestautomation.com/weird_name");
+  });
+
+  it("neutralizes a path-traversal attempt in a placeholder value", () => {
+    // the whole login value stays a single, opaque path segment -- slashes
+    // are replaced rather than allowed to introduce new directory levels
+    expect(
+      PassHelpers.buildEntryNameFromTemplate("www/<url>/<login>", {
+        url,
+        login: "../../etc/passwd",
+      }),
+    ).toBe("/www/practicetestautomation.com/.._.._etc_passwd");
+  });
+
+  it("replaces a bare '..' login with a safe placeholder", () => {
+    expect(
+      PassHelpers.buildEntryNameFromTemplate("<url>/<login>", {
+        url,
+        login: "..",
+      }),
+    ).toBe("/practicetestautomation.com/_");
+  });
+});
+
 describe("getItemQuality", () => {
   let itemFromKey = (key) => ({
     fullKey: key,
