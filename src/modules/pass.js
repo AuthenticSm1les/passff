@@ -638,6 +638,98 @@ export function getItemByFullKey(items, fullKey) {
   return null;
 }
 
+/*
+  Derives a sensible default entry name for a new password store item from a
+  page URL and (optionally) the item/context nearest to it, by taking that
+  context's directory and appending the page's hostname. Falls back to the
+  store root ("/<hostname>") when there's no useful context.
+*/
+export function buildDefaultEntryName(url, context) {
+  if (Array.isArray(context)) {
+    context = context[0];
+  }
+  let fullKey = context && context.fullKey ? context.fullKey : "/";
+  fullKey = fullKey.replace(/\/[^\/]*$/, "/");
+  fullKey += new URL(url).hostname;
+  return fullKey;
+}
+
+/*
+  A placeholder value is substituted verbatim into a single path segment, so
+  it must not be allowed to introduce extra segments (e.g. a login of
+  "../../etc" must not let a page-controlled value escape the intended
+  directory). Slashes/backslashes are replaced, and a bare "." or ".." is
+  replaced outright, since those would otherwise resolve to "no-op" or
+  "parent directory" segments once inserted into the path.
+*/
+function sanitizePathSegment(value) {
+  value = String(value).replace(/[\\/]/g, "_");
+  if (value === "." || value === "..") value = "_";
+  return value;
+}
+
+/*
+  Resolves the user-configurable `askToSaveEntryTemplate` preference (e.g.
+  "www/<url>/<login>") into a concrete store path for a given submission,
+  substituting `<url>` (the site's hostname) and `<login>` (the submitted
+  username). Falls back to just the hostname if the template is empty or
+  resolves to nothing usable.
+*/
+export function buildEntryNameFromTemplate(template, { url, login }) {
+  let hostname = new URL(url).hostname;
+  let resolved = (template || "")
+    .replace(/<url>/g, sanitizePathSegment(hostname))
+    .replace(/<login>/g, sanitizePathSegment(login));
+
+  let fullKey =
+    "/" +
+    resolved
+      .split("/")
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0)
+      .join("/");
+
+  return fullKey === "/" ? "/" + hostname : fullKey;
+}
+
+/*
+  Rewrites the login line (if any) within a stored entry's raw text to
+  `newLogin`, leaving every other line untouched. This matters when saving
+  reuses an *existing* entry whose stored login differs from the one just
+  submitted -- e.g. the user edited the username field in the save prompt,
+  or the configured entry-name template doesn't include `<login>` and two
+  different accounts ended up mapped to the same entry. Blindly preserving
+  the old text verbatim would leave a stale, misleading login field.
+*/
+export function replaceLoginInStoredText(fullText, newLogin) {
+  let lines = fullText.split("\n");
+  let loginFieldNames = PassFF.Preferences.loginFieldNames;
+  let replaced = false;
+
+  for (let i = 1; i < lines.length; i++) {
+    let splitPos = lines[i].indexOf(":");
+    if (splitPos < 0) continue;
+    let fieldName = lines[i].substring(0, splitPos).trim().toLowerCase();
+    if (loginFieldNames.indexOf(fieldName) >= 0) {
+      lines[i] = `${lines[i].substring(0, splitPos)}: ${newLogin}`;
+      replaced = true;
+      break;
+    }
+  }
+
+  if (!replaced && lines.length > 1 && lines[1].indexOf(":") < 0) {
+    // implicit "line 2 is the login" convention used when no field is named
+    lines[1] = newLogin;
+    replaced = true;
+  }
+
+  if (!replaced) {
+    lines.push(`${PassFF.Preferences.loginFieldNames[0]}: ${newLogin}`);
+  }
+
+  return lines.join("\n");
+}
+
 function getItemByRelKey(items, refItem, relKey) {
   let item = getItemById(items, refItem.parent);
   for (const part of relKey.split("/")) {
@@ -753,6 +845,38 @@ function rmTree(items, itemId) {
     siblings.splice(siblings.indexOf(itemId), 1);
   }
   item.children.forEach(rmTree);
+}
+
+/*
+  Waits for the tab to reach a settled state after a form submission.
+  Unlike `util.waitTabComplete`, this always listens for the *next*
+  `browser.tabs.onUpdated` "complete" event rather than trusting the tab's
+  current status: right after a submit event fires, `tab.status` typically
+  still reads "complete" from the *previous* page load, even though a
+  navigation to the post-submit page is about to start. Falls back to the
+  current tab state after `graceMs` in case no navigation happens at all
+  (e.g. an SPA-style form that swaps content in place).
+*/
+function waitForTabSettled(tabId, graceMs) {
+  return new Promise((resolve) => {
+    let settled = false;
+    let timer;
+    let listener = (id, changeInfo) => {
+      if (id === tabId && changeInfo.status === "complete") finish();
+    };
+    let finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      browser.tabs.onUpdated.removeListener(listener);
+      browser.tabs
+        .get(tabId)
+        .then(resolve)
+        .catch(() => resolve(null));
+    };
+    browser.tabs.onUpdated.addListener(listener);
+    timer = setTimeout(finish, graceMs);
+  });
 }
 
 /* #############################################################################
@@ -1237,19 +1361,9 @@ export default {
       .then((tabLogin) => {
         if (typeof tabLogin === "undefined") tabLogin = "";
 
-        let url = new URL(activeTab.url);
-        addPasswordContext = { fullKey: "/" };
-        if (context instanceof Array && context.length > 0) {
-          context = context[0];
-        }
-        if (context) {
-          addPasswordContext["fullKey"] = context.fullKey;
-        }
-        addPasswordContext["fullKey"] = addPasswordContext["fullKey"].replace(
-          /\/[^\/]*$/,
-          "/",
-        );
-        addPasswordContext["fullKey"] += url.hostname;
+        addPasswordContext = {
+          fullKey: buildDefaultEntryName(activeTab.url, context),
+        };
         addPasswordContext["tabUrl"] = activeTab.url;
         addPasswordContext["tabLogin"] =
           PassFF.Preferences.prefillLoginTab && tabLogin != ""
@@ -1272,6 +1386,139 @@ export default {
     function () {
       return addPasswordContext;
     },
+  ),
+
+  /* #############################################################################
+   * #############################################################################
+   *  Implementation of the 'ask to save password' feature
+   * #############################################################################
+   */
+
+  maybeOfferSavePassword: util.backgroundFunction(
+    "Pass.maybeOfferSavePassword",
+    async function (sender, submission) {
+      if (!PassFF.Preferences.askToSavePasswords) return;
+
+      let { login, password, url } = submission;
+      let host;
+      try {
+        host = new URL(url).hostname;
+      } catch (e) {
+        return;
+      }
+      if (PassFF.Preferences.askToSaveBlacklist.indexOf(host) >= 0) return;
+
+      // Start listening for the tab to settle *now*, before the matching
+      // logic below (which awaits several native-host round trips) runs:
+      // the post-submit navigation can easily complete while that logic is
+      // still in flight, and this must not miss that event.
+      let settledTab = waitForTabSettled(sender.tab.id, 5000);
+
+      // Only simple, single-file entries are considered: hierarchical
+      // ("hasFields") entries store the password in a separate child item and
+      // have no `fullText` of their own, so they can't be safely rewritten by
+      // the update path below.
+      let containerName = await util.getTabContainer(sender.tab);
+      let candidates = this.getUrlMatchingItems(url, containerName).filter(
+        (i) => i.isLeaf && !i.isField,
+      );
+
+      // find a stored entry for this site with a matching username
+      let ci = PassFF.Preferences.caseInsensitiveSearch;
+      let matchedEntry = null;
+      let matchedData = null;
+      for (const item of candidates) {
+        let passwordData = await this.getPasswordData(item);
+        if (typeof passwordData === "undefined") continue;
+        let storedLogin = passwordData.login || "";
+        let sameLogin = ci
+          ? storedLogin.toLowerCase() === login.toLowerCase()
+          : storedLogin === login;
+        if (sameLogin) {
+          matchedEntry = item;
+          matchedData = passwordData;
+          break;
+        }
+      }
+
+      let mode, target;
+      if (matchedEntry) {
+        if (matchedData.password === password) return; // already saved
+        mode = "update";
+        target = matchedEntry.fullKey;
+      } else {
+        mode = "new";
+        target = buildEntryNameFromTemplate(
+          PassFF.Preferences.askToSaveEntryTemplate,
+          { url, login },
+        );
+      }
+
+      // Wait for the (likely just-submitted) tab to settle, then make sure
+      // this doesn't look like a failed login, before ever prompting.
+      let tab = await settledTab;
+      if (!tab) return; // tab was closed in the meantime
+      let likelySucceeded = await PassFF.Page.checkLoginLikelySucceeded(
+        tab,
+        url,
+      );
+      if (!likelySucceeded) return;
+
+      let answer = await PassFF.Page.showSavePasswordPrompt(tab, {
+        mode: mode,
+        host: host,
+        login: login,
+        password: password,
+      });
+
+      if (answer.action === "never") {
+        let blacklist = PassFF.Preferences.askToSaveBlacklist;
+        if (blacklist.indexOf(host) < 0) {
+          PassFF.Preferences.askToSaveBlacklist = blacklist
+            .concat(host)
+            .join(",");
+        }
+        return;
+      }
+      if (answer.action !== "save") return;
+
+      // Figure out whether `target` already holds an entry -- this is
+      // normally just `matchedEntry`/`matchedData` from the username match
+      // above, but a "new" save can still collide with an unrelated
+      // pre-existing entry if the configured entry-name template doesn't
+      // happen to include `<login>` (or is a fixed literal path). Either
+      // way, an existing entry's other fields must never be clobbered.
+      let existingData = matchedData;
+      if (!existingData) {
+        let existingItem = this.getItemByFullKey(target);
+        if (existingItem && existingItem.isLeaf && !existingItem.isField) {
+          existingData = await this.getPasswordData(existingItem);
+        }
+      }
+
+      let ok;
+      if (existingData && existingData.fullText) {
+        // preserve every stored line/field except the password itself, and
+        // make sure the login line (if any) reflects what was just
+        // confirmed rather than going stale
+        let updatedText = replaceLoginInStoredText(
+          existingData.fullText,
+          answer.login,
+        );
+        let restOfLines = updatedText.split("\n").slice(1).join("\n");
+        ok = await this.addNewPassword(target, answer.password, restOfLines);
+      } else {
+        let additionalInfo = `${PassFF.Preferences.loginFieldNames[0]}: ${answer.login}`;
+        if (PassFF.Preferences.prefillUrl) {
+          additionalInfo += `\n${PassFF.Preferences.urlFieldNames[0]}: ${url}`;
+        }
+        ok = await this.addNewPassword(target, answer.password, additionalInfo);
+      }
+      if (ok) {
+        PassFF.refreshAll();
+      }
+    },
+    true,
   ),
 };
 

@@ -53,7 +53,7 @@
       "matches": ["<all_urls>"],
       "run_at": "document_start",
       "js": ["content_script.js"],
-      "css": ["skin/content.css"],
+      "css": ["skin/content.css", "skin/savePrompt.css"],
       "all_frames": true
     }
   ],
@@ -70,6 +70,7 @@
     "skin/paper-plane.svg",
     "skin/pencil-square.svg",
     "skin/icon-light.svg",
+    "skin/eye.svg",
     "icon.png"
   ],
 

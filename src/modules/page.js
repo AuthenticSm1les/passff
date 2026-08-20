@@ -695,6 +695,50 @@ function onWindowLoad() {
 
 /* #############################################################################
  * #############################################################################
+ *  Implementation of the 'ask to save password' feature
+ * #############################################################################
+ */
+
+/*
+  Heuristic used to avoid ever offering to save credentials from a failed
+  login attempt: if the page never navigated away from the URL the form was
+  submitted from *and* a password field is still visible on it, this looks
+  like a login page re-rendering an error rather than a successful login.
+*/
+export function loginLikelySucceeded(
+  currentUrl,
+  originUrl,
+  stillShowsPasswordField,
+) {
+  let sameUrl = currentUrl.split("#")[0] === originUrl.split("#")[0];
+  return !(sameUrl && stillShowsPasswordField);
+}
+
+function onFormSubmit(e) {
+  if (!PassFF.Preferences.askToSavePasswords) return;
+
+  let form = e.target;
+  if (!(form instanceof HTMLFormElement)) return;
+
+  // Read values synchronously: once the default submit action proceeds, the
+  // form (and possibly the whole document) may be gone.
+  let loginInput = inputElements.find(
+    (inp) => inp[1] == "login" && inp[0].form === form && inp[0].value != "",
+  );
+  let passwordInput = inputElements.find(
+    (inp) => inp[1] == "password" && inp[0].form === form && inp[0].value != "",
+  );
+  if (!loginInput || !passwordInput) return;
+
+  PassFF.Pass.maybeOfferSavePassword({
+    login: loginInput[0].value,
+    password: passwordInput[0].value,
+    url: window.location.href,
+  });
+}
+
+/* #############################################################################
+ * #############################################################################
  *  Security Checks for (Auto)fill
  * #############################################################################
  */
@@ -848,6 +892,8 @@ function securityChecks(passItemURL, currTabURL, isAutoFill) {
 
 export default {
   init: function () {
+    document.addEventListener("submit", onFormSubmit, true);
+
     return PassFF.Page.getTabContainer()
       .then((name) => {
         tabContainer = name;
@@ -1175,6 +1221,135 @@ export default {
       });
     });
   }),
+
+  // %%%%%%%%%%%%%%% Implementation of 'ask to save password' feature %%%%%%%%%%%%%
+
+  // A short settle delay lets pages that show a login error via AJAX
+  // (without a full navigation) do so before `loginLikelySucceeded` runs.
+  checkLoginLikelySucceeded: util.contentFunction(
+    "Page.checkLoginLikelySucceeded",
+    function (originUrl) {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          let stillShowsPasswordField = querySelectorAllShadows("input")
+            .filter(isVisible)
+            .some((el) => el.type === "password");
+          resolve(
+            loginLikelySucceeded(
+              window.location.href,
+              originUrl,
+              stillShowsPasswordField,
+            ),
+          );
+        }, 700);
+      });
+    },
+    true,
+  ),
+
+  showSavePasswordPrompt: util.contentFunction(
+    "Page.showSavePasswordPrompt",
+    function (details) {
+      let old = document.getElementById("passff_save_prompt");
+      if (old) old.parentNode.removeChild(old);
+
+      let panel = document.createElement("div");
+      panel.id = "passff_save_prompt";
+      panel.innerHTML = `
+        <p class="passff_save_prompt_header"></p>
+        <label class="passff_save_prompt_label"></label>
+        <input type="text" class="passff_save_prompt_username" autocomplete="off" />
+        <label class="passff_save_prompt_label"></label>
+        <div class="passff_save_prompt_password_row">
+          <input type="password" class="passff_save_prompt_password" autocomplete="off" />
+          <button type="button" class="passff_save_prompt_eye"></button>
+        </div>
+        <div class="passff_save_prompt_footer">
+          <div class="passff_save_prompt_notnow_group">
+            <button type="button" class="passff_save_prompt_notnow"></button>
+            <button type="button" class="passff_save_prompt_chevron">&#9662;</button>
+            <div class="passff_save_prompt_menu">
+              <button type="button" class="passff_save_prompt_never"></button>
+            </div>
+          </div>
+          <button type="button" class="passff_save_prompt_save"></button>
+        </div>
+      `;
+
+      panel.querySelector(".passff_save_prompt_header").textContent = _(
+        details.mode === "update"
+          ? "passff_savepassword_title_update"
+          : "passff_savepassword_title_new",
+        [details.host],
+      );
+
+      let labels = panel.querySelectorAll(".passff_save_prompt_label");
+      labels[0].textContent = _("passff_savepassword_username_label");
+      labels[1].textContent = _("passff_savepassword_password_label");
+
+      let usernameInput = panel.querySelector(".passff_save_prompt_username");
+      usernameInput.value = details.login; // .value, never innerHTML
+
+      let passwordInput = panel.querySelector(".passff_save_prompt_password");
+      passwordInput.value = details.password; // .value, never innerHTML
+
+      let eyeButton = panel.querySelector(".passff_save_prompt_eye");
+      eyeButton.title = _("passff_savepassword_toggle_password");
+      eyeButton.style.backgroundImage =
+        "url('" + browser.runtime.getURL("/skin/eye.svg") + "')";
+      eyeButton.addEventListener("click", () => {
+        let showing = passwordInput.type === "text";
+        passwordInput.type = showing ? "password" : "text";
+        eyeButton.classList.toggle("passff_save_prompt_eye_open", !showing);
+      });
+
+      let notNowButton = panel.querySelector(".passff_save_prompt_notnow");
+      notNowButton.textContent = _("passff_savepassword_not_now_button");
+      let chevronButton = panel.querySelector(".passff_save_prompt_chevron");
+      let menu = panel.querySelector(".passff_save_prompt_menu");
+      let neverButton = panel.querySelector(".passff_save_prompt_never");
+      neverButton.textContent = _("passff_savepassword_never_button");
+      let saveButton = panel.querySelector(".passff_save_prompt_save");
+      saveButton.textContent = _("passff_savepassword_save_button");
+
+      chevronButton.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menu.style.display = menu.style.display === "block" ? "none" : "block";
+      });
+
+      document.body.appendChild(panel);
+
+      return new Promise((resolve) => {
+        let resolved = false;
+        let onOutsideClick = (e) => {
+          if (!panel.contains(e.target)) finish("notNow");
+        };
+        let finish = (action) => {
+          if (resolved) return;
+          resolved = true;
+          document.removeEventListener("click", onOutsideClick, true);
+          if (panel.parentNode) panel.parentNode.removeChild(panel);
+          resolve({
+            action: action,
+            login: usernameInput.value,
+            password: passwordInput.value,
+          });
+        };
+
+        // deferred so the click that triggered this panel (e.g. a submit
+        // button) doesn't immediately count as an "outside" click
+        setTimeout(
+          () => document.addEventListener("click", onOutsideClick, true),
+          0,
+        );
+
+        notNowButton.addEventListener("click", () => finish("notNow"));
+        neverButton.addEventListener("click", () => finish("never"));
+        saveButton.addEventListener("click", () => finish("save"));
+      });
+    },
+    true,
+  ),
 
   // %%%%%%%%%%%%%%%%%%%%%%%%%%% Miscellaneous %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

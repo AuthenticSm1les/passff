@@ -87,6 +87,9 @@ let prefParams = {
   autoFill: false,
   autoSubmit: false,
   autoFillBlacklist: "",
+  askToSavePasswords: true,
+  askToSaveBlacklist: "",
+  askToSaveEntryTemplate: "<url>/<login>",
   checkOnlyAuto: false,
   checkProtocol: 1,
   checkDomain: 1,
@@ -133,6 +136,7 @@ const listParams = {
   urlFieldNames: ",",
   otpauthFieldNames: ",",
   autoFillBlacklist: ",",
+  askToSaveBlacklist: ",",
   markFillableBlacklist: ",",
   recognisedSuffixes: ",",
   filterPathRegex: "\n",
@@ -149,6 +153,7 @@ const lowerCaseParams = [
   "urlFieldNames",
   "otpauthFieldNames",
   "autoFillBlacklist",
+  "askToSaveBlacklist",
 ];
 
 /* #############################################################################

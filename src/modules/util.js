@@ -161,7 +161,7 @@ export function waitTabComplete(tb) {
     return new Promise((resolve, reject) => {
       if (tab.status === "complete") return resolve(tab);
       browser.tabs.onUpdated.addListener(function _f(_0, _1, evtTab) {
-        if ((evtTab.id = tab.id && evtTab.status === "complete")) {
+        if (evtTab.id === tab.id && evtTab.status === "complete") {
           browser.tabs.onUpdated.removeListener(_f);
           resolve(evtTab);
         }
