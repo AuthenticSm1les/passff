@@ -49,21 +49,29 @@ Previous releases are available for download as XPI files from [our releases pag
 
 ### Installing this fork
 
-This fork's changes aren't published on the Mozilla add-on page. Download the built `passff.xpi` from the
-[latest release](https://github.com/AuthenticSm1les/passff/releases/latest) instead of building it yourself — the
-[zx2c4 pass repository](#zx2c4-pass-repository) and [host application](#host-application) steps above still apply the
-same way.
+This fork's changes aren't published on the Mozilla add-on page. Download `passff.xpi` from the
+[latest release](https://github.com/AuthenticSm1les/passff/releases/latest) — the [zx2c4 pass repository](#zx2c4-pass-repository)
+and [host application](#host-application) steps above still apply the same way.
 
-The XPI is **unsigned**, so how you install it depends on your Firefox:
+Starting with v1.24.1, releases are **signed by Mozilla** (self-distribution/"unlisted" signing), so you can install
+`passff.xpi` like a normal extension on any Firefox channel: open it directly, or drag it into a Firefox window. No
+`about:config` changes and no re-installing after every restart.
 
-- **Developer Edition, Nightly, or ESR**: set `xpinstall.signatures.required` to `false` in `about:config` (one-time),
-  then open the downloaded `passff.xpi` directly, or drag it into a Firefox window, to install it permanently.
-- **Any Firefox** (including regular Release, which enforces signing and can't use the option above): open
-  `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…** → select the downloaded `passff.xpi`. This
-  works everywhere without changing any settings, but has to be repeated after every Firefox restart, since Firefox
-  discards temporary add-ons on exit.
+> **This fork uses its own extension ID** (`passff-asktosave@authenticsm1les`), separate from upstream PassFF's
+> (`passff@invicem.pro`), since that ID is registered under the upstream maintainers' Mozilla account and can't be
+> used to sign this fork. If you already have [passff-host](https://codeberg.org/PassFF/passff-host) installed, its
+> native messaging manifest only whitelists the old ID by default — add the new one or the extension won't be able
+> to reach `pass` at all. Edit the host's manifest (commonly
+> `/usr/lib/mozilla/native-messaging-hosts/passff.json` or `/usr/share/passff/passff.json` on Linux; see
+> passff-host's docs for other platforms) so `allowed_extensions` includes both:
+>
+> ```json
+> "allowed_extensions": ["passff@invicem.pro", "passff-asktosave@authenticsm1les"]
+> ```
 
-If you'd rather build from source (e.g. to try unreleased changes):
+If you'd rather build from source (e.g. to try unreleased changes), the result is **unsigned**, so it can only be
+loaded as a temporary add-on (`about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…**, redone after every
+restart) or on Developer Edition/Nightly/ESR with `xpinstall.signatures.required` set to `false` in `about:config`:
 
 ```sh
 git clone https://github.com/AuthenticSm1les/passff
@@ -72,7 +80,7 @@ npm install
 make
 ```
 
-This produces `bin/testing/passff.xpi`, installed the same way as above.
+This produces `bin/testing/passff.xpi`.
 
 ### A graphical _pinentry_ program
 
