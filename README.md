@@ -1,10 +1,20 @@
 # passff
 
+> **This is a fork** of the official [PassFF](https://codeberg.org/PassFF/passff) project, maintained here at
+> [AuthenticSm1les/passff](https://github.com/AuthenticSm1les/passff). It exists to add an
+> ["ask to save/update password"](#ask-to-save-password-fork-only) doorhanger on top of upstream PassFF; everything else
+> in this README describes the shared, unmodified behavior. This fork is **not affiliated with, endorsed by, or
+> distributed through** the official PassFF maintainers or the Mozilla add-on page — see
+> [Installing this fork](#installing-this-fork) below, since the unpacked/unsigned build here can't be installed the
+> same way as the official release. For the original project, issue tracker, and signed releases, go to
+> [codeberg.org/PassFF/passff](https://codeberg.org/PassFF/passff).
+
 [![Join the chat at https://gitter.im/jvenant/passff](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jvenant/passff?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 **[zx2c4 pass](http://www.zx2c4.com/projects/password-store/)** management extension for **Mozilla Firefox**.
 
-**Official signed version can be found on the [Mozilla add-on page](https://addons.mozilla.org/firefox/addon/passff)**
+**Official signed version can be found on the [Mozilla add-on page](https://addons.mozilla.org/firefox/addon/passff)** — that
+version does not include this fork's changes; see [Installing this fork](#installing-this-fork) to use this version instead.
 
 ![passff](https://user-images.githubusercontent.com/1518387/33810636-8c95df16-de07-11e7-8857-283e7300ecff.png)
 
@@ -36,6 +46,26 @@ Install the current release of PassFF for your browser:
 - [Firefox](https://addons.mozilla.org/firefox/addon/passff)
 
 Previous releases are available for download as XPI files from [our releases page](https://codeberg.org/PassFF/passff/releases). However, this is strongly discouraged for security reasons!
+
+### Installing this fork
+
+This fork's changes aren't published on the Mozilla add-on page, so it has to be built and loaded manually:
+
+```sh
+git clone https://github.com/AuthenticSm1les/passff
+cd passff
+npm install
+make
+```
+
+This produces `bin/testing/passff.xpi`. Since it isn't signed, load it as a temporary add-on:
+
+1. Open `about:debugging#/runtime/this-firefox` in Firefox.
+2. Click **Load Temporary Add-on…** and select `build/testing/manifest.json` (or the `.xpi`).
+
+Temporary add-ons are removed when Firefox restarts, so you'll need to repeat this after every restart, or package/self-sign
+the XPI if you want a persistent install. The [zx2c4 pass repository](#zx2c4-pass-repository) and
+[host application](#host-application) steps above still apply the same way.
 
 ### A graphical _pinentry_ program
 
@@ -279,6 +309,31 @@ In _any_ input field, fillable or not, you can access a contextual menu (right-c
 ### Adding new passwords
 
 In order to add a password in your repository, select the 'plus' (+) icon in the toolbar menu.
+
+### Ask to save password (fork only)
+
+In addition to adding passwords manually, this fork can offer to save or update a password automatically, similar to
+Firefox's built-in password manager. When you submit a login form and the login appears to have succeeded, a doorhanger
+appears in the page:
+
+- If no saved entry matches the submitted username for that site, it offers to **Save** a new entry.
+- If a saved entry for that username already exists but the password differs, it offers to **Update** it — every other
+  field on the entry (OTP secret, notes, custom fields) is preserved; only the password (and, if you edited the username
+  in the prompt, the login line) changes.
+- **Not now** dismisses the prompt for that one submission. The chevron next to it opens **Never for this site**, which
+  adds the site to a persistent blacklist.
+- PassFF never prompts unless the page navigated away from the submitted URL (or the submitted page no longer shows a
+  password field), so a rejected/incorrect login won't trigger a save.
+
+This is controlled by three preferences, in the **Autofilling** tab:
+
+- **Offer to save new or changed passwords after a successful login** — turns the feature on or off entirely.
+- **Never offer to save passwords for these hostnames** — the same blacklist "Never for this site" writes to; you can
+  also edit it directly here.
+- **New entry path template** — controls where new entries are created, using `<url>` (the site's hostname) and
+  `<login>` (the submitted username) as placeholders. For example, `www/<url>/<login>` stores a login for `student` on
+  `example.com` as `www/example.com/student`. Defaults to `<url>/<login>`. This only affects _new_ entries — updating an
+  existing entry always writes back to that entry's existing location.
 
 ## Issues
 
