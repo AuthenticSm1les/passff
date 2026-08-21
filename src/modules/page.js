@@ -401,6 +401,12 @@ async function collectDropdownEntries() {
 }
 
 async function openInputDropdown(target, inputType) {
+  if (target.passffSuppressDropdown) {
+    // we just focus()ed this field ourselves to fill it -- don't treat that
+    // as a request to reopen the dropdown on top of what was just filled
+    delete target.passffSuppressDropdown;
+    return;
+  }
   if (!PassFF.Preferences.markFillable) return;
   if (popupTarget === target) return; // already open for this field
 
@@ -411,7 +417,10 @@ async function openInputDropdown(target, inputType) {
 
   let entries = urlInBlacklist >= 0 ? [] : await collectDropdownEntries();
   let offerGenerate =
-    urlInBlacklist < 0 && entries.length === 0 && inputType === "password";
+    urlInBlacklist < 0 &&
+    entries.length === 0 &&
+    inputType === "password" &&
+    target.value === ""; // don't suggest generating over an already-filled field
 
   // focus may have moved on to a different field while awaiting the above;
   // whatever was open for the previously-focused field is stale either way
@@ -443,7 +452,7 @@ async function openInputDropdown(target, inputType) {
     );
     row.addEventListener("click", () => {
       closeDropdown();
-      PassFF.Pass.newPasswordUI();
+      fillGeneratedPassword(target);
     });
     dropdown.appendChild(row);
   } else {
@@ -527,9 +536,49 @@ function positionDropdown(dropdown, target) {
   dropdown.style.setProperty("z-index", "" + z, "important");
 }
 
+/*
+  Generates a password locally (Web Crypto, never touching the password
+  store) and fills it straight into the field the dropdown was opened for,
+  plus any other visible password field in the same form (e.g. a "confirm
+  password" field) -- matching native Firefox's "Use a Securely Generated
+  Password" suggestion, which only fills and never saves/submits anything.
+*/
+function generateRandomPassword(length, includeSymbols) {
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const digits = "0123456789";
+  const symbols = "!@#$%^&*()-_=+[]{};:,.<>?";
+  let charset = lower + upper + digits + (includeSymbols ? symbols : "");
+  let randomValues = new Uint32Array(length);
+  crypto.getRandomValues(randomValues);
+  return Array.from(randomValues, (n) => charset[n % charset.length]).join("");
+}
+
+function fillGeneratedPassword(target) {
+  let password = generateRandomPassword(
+    PassFF.Preferences.defaultPasswordLength,
+    PassFF.Preferences.defaultIncludeSymbols,
+  );
+  target.passffSuppressDropdown = true;
+  target.focus();
+  writeValueWithEvents(target, password);
+  if (target.form) {
+    Array.from(target.form.elements)
+      .filter(
+        (el) =>
+          el !== target &&
+          el.tagName === "INPUT" &&
+          el.type === "password" &&
+          isVisible(el),
+      )
+      .forEach((el) => writeValueWithEvents(el, password));
+  }
+}
+
 function onDropdownEntryClick(item) {
   let target = popupTarget;
   closeDropdown();
+  target.passffSuppressDropdown = true;
   target.focus();
   // Fill only, never submit: matches native Firefox, where picking a
   // suggestion never submits the form on your behalf.
