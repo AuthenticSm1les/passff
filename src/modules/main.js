@@ -195,6 +195,10 @@ let PassFF = {
             browser.tabs.onUpdated.addListener(onTabUpdated);
             browser.tabs.onActivated.addListener(onTabActivated);
             browser.windows.onFocusChanged.addListener(onWindowFocus);
+            // No default_popup: the toolbar icon opens preferences directly.
+            browser.browserAction.onClicked.addListener(() =>
+              PassFF.Preferences.openPreferences(),
+            );
             return onTabActivated();
             break;
         }

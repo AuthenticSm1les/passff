@@ -50,12 +50,6 @@
   "passff_toolbar_refresh_label": {
     "message": "Refresh"
   },
-  "passff_toolbar_preferences_label": {
-    "message": "Preferences"
-  },
-  "passff_toolbar_new_password_label": {
-    "message": "New"
-  },
   "passff_button_root_label": {
     "message": "Display top-level"
   },
@@ -124,15 +118,6 @@
   },
   "passff_prefs_case_insensitive_search": {
     "message": "Case-insensitive searching"
-  },
-  "passff_prefs_enter_behavior": {
-    "message": "Behavior of Enter key"
-  },
-  "passff_prefs_shift_enter_behavior": {
-    "message": "Behavior of Shift-Enter key"
-  },
-  "passff_prefs_ctrl_enter_behavior": {
-    "message": "Behavior of Ctrl-Enter key"
   },
   "passff_prefs_inputs_description": {
     "message": "Inputs are used by PassFF to find fillable input fields in web pages. Optionally, PassFF marks them with a menu to fill them."
@@ -247,9 +232,6 @@
   },
   "passff_prefs_prefer_insert": {
     "message": "Manually insert"
-  },
-  "passff_prefs_show_new_password_button": {
-    "message": "Show 'New Password' button in the toolbar menu"
   },
   "passff_prefs_enable_logging": {
     "message": "Enable logging to the JavaScript web console"

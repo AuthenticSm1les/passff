@@ -122,14 +122,6 @@ div.buttonbox button.icon {
   background-repeat: no-repeat;
 }
 
-div.buttonbox button.config {
-  background-image: url("button-config.svg");
-}
-
-div.buttonbox button.add {
-  background-image: url("button-add.svg");
-}
-
 div.buttonbox button.reload {
   background-image: url("button-reload.svg");
 }

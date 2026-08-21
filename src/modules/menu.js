@@ -261,18 +261,6 @@ function onRefreshButtonCommand(event) {
   PassFF.refreshAll().then(createContextualMenu);
 }
 
-function onPrefButtonCommand(event) {
-  log.debug("onPrefButtonCommand");
-  browser.runtime.openOptionsPage();
-  window.close();
-}
-
-function onNewPassButtonCommand(event) {
-  log.debug("onNewPassButtonCommand");
-  PassFF.Pass.newPasswordUI(menuState["items"]);
-  window.close();
-}
-
 /* #############################################################################
  * #############################################################################
  *  Menu list DOM creators
@@ -336,13 +324,8 @@ function createItemsMenuList(items, cleanMenu) {
     if (item.isField || item.isMeta || item.isHidden) return;
     let onEnter = null;
     if (item.isLeaf || item.hasFields) {
-      onEnter = function (event) {
-        if (PassFF.mode === "itemPicker") {
-          PassFF.Menu.onPickItem(getItem(this));
-        } else {
-          PassFF.Menu.onEnter(getItem(this), event.shiftKey, event.ctrlKey);
-          window.close();
-        }
+      onEnter = function () {
+        PassFF.Menu.onPickItem(getItem(this));
       };
     }
     let label = item.fullKey;
@@ -503,23 +486,7 @@ function initUi() {
   refreshButton.setAttribute("title", _("passff_toolbar_refresh_label"));
   refreshButton.addEventListener("click", onRefreshButtonCommand);
 
-  if (PassFF.mode === "menu") {
-    let prefsButton = document.querySelector(".actions button.config");
-    prefsButton.setAttribute("title", _("passff_toolbar_preferences_label"));
-    prefsButton.addEventListener("click", onPrefButtonCommand);
-
-    let newPasswordButton = document.querySelector(".actions button.add");
-    if (!PassFF.Preferences.showNewPassButton) {
-      let newPasswordDiv = newPasswordButton.parentNode;
-      newPasswordDiv.parentNode.removeChild(newPasswordDiv);
-    } else {
-      newPasswordButton.setAttribute(
-        "title",
-        _("passff_toolbar_new_password_label"),
-      );
-      newPasswordButton.addEventListener("click", onNewPassButtonCommand);
-    }
-  } else if (PassFF.mode === "itemPicker") {
+  if (PassFF.mode === "itemPicker") {
     window.onresize = function onresize() {
       // Rescale select box to fit window's height
       let dataBox = document.querySelector(".itemPickerTarget");
@@ -586,63 +553,6 @@ export default {
   },
 
   // %%%%%%%%%%%%% Event handlers that are delegated to background %%%%%%%%%%%%%%%
-
-  onEnter: util.backgroundFunction(
-    "Menu.onEnter",
-    function (itemId, shiftKey, ctrlKey) {
-      let item = PassFF.Pass.getItemById(itemId);
-      log.debug("Enter press on item", item.fullKey, shiftKey, ctrlKey);
-      let behavior = ctrlKey
-        ? PassFF.Preferences.ctrlEnterBehavior
-        : shiftKey
-          ? PassFF.Preferences.shiftEnterBehavior
-          : PassFF.Preferences.enterBehavior;
-      switch (behavior) {
-        case 0:
-          //goto url, fill, submit
-          PassFF.Page.goToItemUrl(item, false, true, true);
-          break;
-        case 1:
-          //goto url, fill
-          PassFF.Page.goToItemUrl(item, false, true, false);
-          break;
-        case 2:
-          //fill, submit
-          PassFF.Page.fillInputs(null, item, true);
-          break;
-        case 3:
-          //fill
-          PassFF.Page.fillInputs(null, item, false);
-          break;
-        case 4:
-          //goto url, fill, submit (new tab)
-          PassFF.Page.goToItemUrl(item, true, true, true);
-          break;
-        case 5:
-          //goto url, fill (new tab)
-          PassFF.Page.goToItemUrl(item, true, true, false);
-          break;
-        case 6:
-          //copy password
-          PassFF.Pass.getPasswordData(item).then((passwordData) => {
-            if (typeof passwordData === "undefined") return;
-            navigator.clipboard.writeText(passwordData.password);
-          });
-          break;
-        case 7:
-          //copy login
-          PassFF.Pass.getPasswordData(item).then((passwordData) => {
-            if (typeof passwordData === "undefined") return;
-            navigator.clipboard.writeText(passwordData.login);
-          });
-          break;
-        case 8:
-          //display
-          PassFF.Pass.displayItem(item);
-          break;
-      }
-    },
-  ),
 
   onPickItem: function (itemId) {
     let item = PassFF.Pass.getItemById(itemId);

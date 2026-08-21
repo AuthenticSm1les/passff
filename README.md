@@ -293,7 +293,7 @@ into the name of the entry for `http://example.com:2000/`:
 
 ### Extension preferences
 
-Accessible from the gear button in the toolbar menu, preferences let you fine-tune the behaviour of PassFF.
+Accessible by clicking PassFF's toolbar icon, preferences let you fine-tune the behaviour of PassFF.
 
 ### Host application preferences
 
@@ -301,18 +301,15 @@ If you use a customized `pass` installation: environment variables, customized r
 
 ## Usage
 
-Once installed, you should have a new icon in your toolbar. Click the icon to browse your password repository or search using a **fuzzy matching** algorithm.
+Once installed, you should have a new icon in your toolbar. **This fork removes upstream's toolbar popup** (the
+search/browse window) — clicking the icon opens PassFF's preferences directly instead. Filling and browsing your
+password repository happens through the [input menu](#input-menu) on the page itself, or the
+[contextual menu](#contextual-menu).
 
 ### Keyboard shortcuts
 
-The default shortcut to open the menu is <kbd>ctrl</kbd>+<kbd>y</kbd>.
-
-With the menu open, you can press <kbd>enter</kbd> to execute one of the following commands, according to your preferences:
-
-- Goto, fill and submit
-- Goto and fill
-- Fill and submit
-- Fill
+The default shortcut, <kbd>ctrl</kbd>+<kbd>y</kbd>, does the same thing as clicking the toolbar icon: it opens
+preferences. You can change or clear it on Firefox's `about:addons` shortcuts page.
 
 ### Input menu
 
@@ -322,8 +319,9 @@ field shows a plain list, a password field additionally labels each entry "From 
 **Manage Passwords** footer that opens PassFF's preferences. If a password field has no matching entries, the
 dropdown instead offers to generate a secure password. Like Firefox's own equivalent suggestion, this only fills the
 password field (and a visible "confirm password" field, if the form has one) with a freshly generated password — it
-doesn't save anything to your password store. Save it afterwards with the toolbar's "+" button if you want to keep
-it. Clicking a regular entry fills the form the same way — it never submits on your behalf.
+doesn't save anything to your password store. Submit the form afterwards and PassFF's
+[ask-to-save prompt](#ask-to-save-password-fork-only) will offer to store it, or add it manually with `pass insert`.
+Clicking a regular entry fills the form the same way — it never submits on your behalf.
 
 This feature can be disabled in the preferences (the "Mark fillable input fields" option, renamed here to reflect
 the new behavior).
@@ -338,7 +336,14 @@ In _any_ input field, fillable or not, you can access a contextual menu (right-c
 
 ### Adding new passwords
 
-In order to add a password in your repository, select the 'plus' (+) icon in the toolbar menu.
+**This fork removes upstream's toolbar "+" button** along with the rest of the toolbar popup (see [Usage](#usage)).
+There are now two ways to add a password to your repository:
+
+- Log in to a site normally; if the login succeeds, the [ask-to-save prompt](#ask-to-save-password-fork-only) offers
+  to save it for you.
+- Add it directly from the command line with `pass insert <name>` (or `pass insert -m <name>` for a multi-line entry
+  with extra fields) — see [pass's own documentation](https://www.passwordstore.org/) and
+  [Multi-line format](#multi-line-format) above. PassFF picks up new entries automatically; no reload is needed.
 
 ### Ask to save password (fork only)
 
@@ -394,7 +399,7 @@ Configure the script's execution parameters appropriately in the host app `passf
     - [No dialog opening up on Arch Linux](https://codeberg.org/PassFF/passff/issues/330)
     - [Decryption failed on MacOS](https://codeberg.org/PassFF/passff/issues/325)
     - [Script execution failed on CentOS](https://codeberg.org/PassFF/passff/issues/367)
-- **The icon/toolbar menu suggests no or the wrong entries**
+- **The input dropdown suggests no or the wrong entries**
   - See the section [Improve suggestions (contextual entries)](https://codeberg.org/PassFF/passff#improve-suggestions-contextual-entries) above.
 
 ## Contributing
