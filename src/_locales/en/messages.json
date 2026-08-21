@@ -371,6 +371,15 @@
   "passff_savepassword_never_button": {
     "message": "Never for this site"
   },
+  "passff_savepassword_add_field_button": {
+    "message": "+ Add field"
+  },
+  "passff_savepassword_field_name_placeholder": {
+    "message": "Field name"
+  },
+  "passff_savepassword_field_value_placeholder": {
+    "message": "Value"
+  },
   "passff_checks_url_curr": {
     "message": "The URL of the current website:"
   },

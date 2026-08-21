@@ -109,6 +109,85 @@
   opacity: 1;
 }
 
+.passff_save_prompt_extra_fields {
+  all: revert;
+  display: block;
+  box-sizing: border-box;
+}
+
+.passff_save_prompt_extra_field_row {
+  all: revert;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  margin-top: 0.5em;
+  box-sizing: border-box;
+}
+
+.passff_save_prompt_extra_field_name,
+.passff_save_prompt_extra_field_value {
+  all: revert;
+  display: block;
+  flex: 1 1 50%;
+  min-width: 0;
+  padding: 0.35em 0.4em;
+  background: transparent;
+  color: #f2f2f5;
+  border: 0;
+  border-bottom: 1px solid #55586b;
+  outline: none;
+  font-family: sans-serif;
+  font-size: 10pt;
+  box-sizing: border-box;
+}
+
+.passff_save_prompt_extra_field_name:focus,
+.passff_save_prompt_extra_field_value:focus {
+  border-bottom-color: #4dd0c4;
+}
+
+.passff_save_prompt_extra_field_name::placeholder,
+.passff_save_prompt_extra_field_value::placeholder {
+  color: #7c7f91;
+}
+
+.passff_save_prompt_extra_field_remove {
+  all: revert;
+  display: block;
+  flex: 0 0 auto;
+  width: 1.6em;
+  height: 1.6em;
+  line-height: 1;
+  color: #a7a9b8;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 12pt;
+  box-sizing: border-box;
+}
+
+.passff_save_prompt_extra_field_remove:hover {
+  color: #f2f2f5;
+}
+
+.passff_save_prompt_add_field {
+  all: revert;
+  display: block;
+  margin-top: 0.6em;
+  padding: 0;
+  color: #4dd0c4;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: sans-serif;
+  font-size: 9pt;
+  box-sizing: border-box;
+}
+
+.passff_save_prompt_add_field:hover {
+  text-decoration: underline;
+}
+
 .passff_save_prompt_footer {
   all: revert;
   display: flex;

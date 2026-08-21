@@ -343,6 +343,9 @@ appears in the page:
 - If a saved entry for that username already exists but the password differs, it offers to **Update** it — every other
   field on the entry (OTP secret, notes, custom fields) is preserved; only the password (and, if you edited the username
   in the prompt, the login line) changes.
+- **+ Add field** lets you attach arbitrary custom fields (e.g. `cc-number`, `notes`, `otpauth`) before saving, the same
+  way you'd add them by hand in a multi-line password file — see [Multi-line format](#multi-line-format). Adding a
+  field whose name already exists on the entry replaces its value; anything not touched is left alone.
 - **Not now** dismisses the prompt for that one submission. The chevron next to it opens **Never for this site**, which
   adds the site to a persistent blacklist.
 - PassFF never prompts unless the page navigated away from the submitted URL (or the submitted page no longer shows a

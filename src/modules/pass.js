@@ -730,6 +730,45 @@ export function replaceLoginInStoredText(fullText, newLogin) {
   return lines.join("\n");
 }
 
+/*
+  Applies user-supplied custom fields (from the save-password prompt's
+  "+ Add field" rows) to a stored entry's *other* lines -- i.e. everything
+  except the password line, which the caller keeps separate. A field whose
+  name already appears as a "<name>: <value>" line has that line's value
+  replaced; otherwise a new line is appended. `fields` is a list of
+  `{name, value}` objects, in the order the user added them (later entries
+  with the same name win). Names/values are sanitized to a single line each,
+  since they'd otherwise corrupt the line-based file format.
+*/
+export function applyExtraFields(otherLinesText, fields) {
+  let lines = otherLinesText.length > 0 ? otherLinesText.split("\n") : [];
+
+  for (let field of fields || []) {
+    let name = String(field.name)
+      .replace(/[\r\n:]/g, "")
+      .trim();
+    let value = String(field.value).replace(/[\r\n]/g, "");
+    if (name.length === 0) continue;
+
+    let replaced = false;
+    for (let i = 0; i < lines.length; i++) {
+      let splitPos = lines[i].indexOf(":");
+      if (splitPos < 0) continue;
+      let fieldName = lines[i].substring(0, splitPos).trim().toLowerCase();
+      if (fieldName === name.toLowerCase()) {
+        lines[i] = `${name}: ${value}`;
+        replaced = true;
+        break;
+      }
+    }
+    if (!replaced) {
+      lines.push(`${name}: ${value}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
 function getItemByRelKey(items, refItem, relKey) {
   let item = getItemById(items, refItem.parent);
   for (const part of relKey.split("/")) {
@@ -1506,12 +1545,14 @@ export default {
           answer.login,
         );
         let restOfLines = updatedText.split("\n").slice(1).join("\n");
+        restOfLines = applyExtraFields(restOfLines, answer.extraFields);
         ok = await this.addNewPassword(target, answer.password, restOfLines);
       } else {
         let additionalInfo = `${PassFF.Preferences.loginFieldNames[0]}: ${answer.login}`;
         if (PassFF.Preferences.prefillUrl) {
           additionalInfo += `\n${PassFF.Preferences.urlFieldNames[0]}: ${url}`;
         }
+        additionalInfo = applyExtraFields(additionalInfo, answer.extraFields);
         ok = await this.addNewPassword(target, answer.password, additionalInfo);
       }
       if (ok) {

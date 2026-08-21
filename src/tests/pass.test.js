@@ -312,6 +312,65 @@ describe("replaceLoginInStoredText", () => {
   });
 });
 
+describe("applyExtraFields", () => {
+  it("appends new fields in order", () => {
+    expect(
+      PassHelpers.applyExtraFields("login: student", [
+        { name: "cc-number", value: "6280703190156733" },
+        { name: "cc-exp", value: "01/30" },
+      ]),
+    ).toBe("login: student\ncc-number: 6280703190156733\ncc-exp: 01/30");
+  });
+
+  it("replaces the value of a field that already exists (case-insensitive)", () => {
+    expect(
+      PassHelpers.applyExtraFields("login: student\nNotes: old note", [
+        { name: "notes", value: "new note" },
+      ]),
+    ).toBe("login: student\nnotes: new note");
+  });
+
+  it("works when there are no existing other lines", () => {
+    expect(
+      PassHelpers.applyExtraFields("", [{ name: "notes", value: "hi" }]),
+    ).toBe("notes: hi");
+  });
+
+  it("skips fields with an empty/whitespace-only name", () => {
+    expect(
+      PassHelpers.applyExtraFields("login: student", [
+        { name: "   ", value: "ignored" },
+      ]),
+    ).toBe("login: student");
+  });
+
+  it("ignores an empty/undefined fields list", () => {
+    expect(PassHelpers.applyExtraFields("login: student", undefined)).toBe(
+      "login: student",
+    );
+    expect(PassHelpers.applyExtraFields("login: student", [])).toBe(
+      "login: student",
+    );
+  });
+
+  it("sanitizes colons and newlines out of the field name, and newlines out of the value", () => {
+    expect(
+      PassHelpers.applyExtraFields("login: student", [
+        { name: "weird:name\n", value: "line1\nline2" },
+      ]),
+    ).toBe("login: student\nweirdname: line1line2");
+  });
+
+  it("later duplicate field names in the same call win", () => {
+    expect(
+      PassHelpers.applyExtraFields("login: student", [
+        { name: "notes", value: "first" },
+        { name: "notes", value: "second" },
+      ]),
+    ).toBe("login: student\nnotes: second");
+  });
+});
+
 describe("buildEntryNameFromTemplate", () => {
   const url = "https://practicetestautomation.com/login";
 

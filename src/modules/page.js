@@ -1264,6 +1264,8 @@ export default {
           <input type="password" class="passff_save_prompt_password" autocomplete="off" />
           <button type="button" class="passff_save_prompt_eye"></button>
         </div>
+        <div class="passff_save_prompt_extra_fields"></div>
+        <button type="button" class="passff_save_prompt_add_field"></button>
         <div class="passff_save_prompt_footer">
           <div class="passff_save_prompt_notnow_group">
             <button type="button" class="passff_save_prompt_notnow"></button>
@@ -1303,6 +1305,35 @@ export default {
         eyeButton.classList.toggle("passff_save_prompt_eye_open", !showing);
       });
 
+      let extraFieldsContainer = panel.querySelector(
+        ".passff_save_prompt_extra_fields",
+      );
+      let addFieldButton = panel.querySelector(".passff_save_prompt_add_field");
+      addFieldButton.textContent = _("passff_savepassword_add_field_button");
+
+      function addExtraFieldRow() {
+        let row = document.createElement("div");
+        row.classList.add("passff_save_prompt_extra_field_row");
+        row.innerHTML = `
+          <input type="text" class="passff_save_prompt_extra_field_name" autocomplete="off" />
+          <input type="text" class="passff_save_prompt_extra_field_value" autocomplete="off" />
+          <button type="button" class="passff_save_prompt_extra_field_remove">&times;</button>
+        `;
+        let nameInput = row.querySelector(
+          ".passff_save_prompt_extra_field_name",
+        );
+        nameInput.placeholder = _("passff_savepassword_field_name_placeholder");
+        row.querySelector(".passff_save_prompt_extra_field_value").placeholder =
+          _("passff_savepassword_field_value_placeholder");
+        row
+          .querySelector(".passff_save_prompt_extra_field_remove")
+          .addEventListener("click", () => row.remove());
+        extraFieldsContainer.appendChild(row);
+        nameInput.focus();
+      }
+
+      addFieldButton.addEventListener("click", addExtraFieldRow);
+
       let notNowButton = panel.querySelector(".passff_save_prompt_notnow");
       notNowButton.textContent = _("passff_savepassword_not_now_button");
       let chevronButton = panel.querySelector(".passff_save_prompt_chevron");
@@ -1329,10 +1360,24 @@ export default {
           resolved = true;
           document.removeEventListener("click", onOutsideClick, true);
           if (panel.parentNode) panel.parentNode.removeChild(panel);
+          let extraFields = Array.from(
+            extraFieldsContainer.querySelectorAll(
+              ".passff_save_prompt_extra_field_row",
+            ),
+          )
+            .map((row) => ({
+              name: row
+                .querySelector(".passff_save_prompt_extra_field_name")
+                .value.trim(),
+              value: row.querySelector(".passff_save_prompt_extra_field_value")
+                .value,
+            }))
+            .filter((field) => field.name.length > 0);
           resolve({
             action: action,
             login: usernameInput.value,
             password: passwordInput.value,
+            extraFields: extraFields,
           });
         };
 
