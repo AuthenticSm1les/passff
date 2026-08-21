@@ -531,13 +531,11 @@ function onDropdownEntryClick(item) {
   let target = popupTarget;
   closeDropdown();
   target.focus();
+  // Fill only, never submit: matches native Firefox, where picking a
+  // suggestion never submits the form on your behalf.
   PassFF.Pass.getPasswordData(item).then((passwordData) => {
     if (typeof passwordData === "undefined") return;
-    return PassFF.Page.fillActiveElement(passwordData).then(() => {
-      if (PassFF.Preferences.submitFillable) {
-        PassFF.Page.submit(target.form);
-      }
-    });
+    return PassFF.Page.fillActiveElement(passwordData);
   });
 }
 

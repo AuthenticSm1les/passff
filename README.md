@@ -320,8 +320,8 @@ With the menu open, you can press <kbd>enter</kbd> to execute one of the followi
 clicking a fillable field opens a dropdown right below it, listing matching entries for the current site — a username
 field shows a plain list, a password field additionally labels each entry "From this website" and adds a
 **Manage Passwords** footer that opens PassFF's preferences. If a password field has no matching entries, the
-dropdown instead offers to generate a new password (opening the same window as the toolbar's "+" button). Clicking
-an entry fills the form and, depending on your preferences, submits it.
+dropdown instead offers to generate a new password (opening the same window as the toolbar's "+" button). Clicking an
+entry fills the form, the same as native Firefox — it never submits on your behalf.
 
 This feature can be disabled in the preferences (the "Mark fillable input fields" option, renamed here to reflect
 the new behavior).

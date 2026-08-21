@@ -110,7 +110,6 @@ let prefParams = {
   markFillable: true,
   markFillableBlacklist: "",
   contextMenu: true,
-  submitFillable: true,
   directoriesFirst: false,
   enableLogging: false,
   showStatus: true,
