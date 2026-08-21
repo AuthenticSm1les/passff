@@ -53,7 +53,11 @@
       "matches": ["<all_urls>"],
       "run_at": "document_start",
       "js": ["content_script.js"],
-      "css": ["skin/content.css", "skin/savePrompt.css"],
+      "css": [
+        "skin/content.css",
+        "skin/savePrompt.css",
+        "skin/inputDropdown.css"
+      ],
       "all_frames": true
     }
   ],
@@ -67,10 +71,11 @@
   },
 
   "web_accessible_resources": [
-    "skin/paper-plane.svg",
-    "skin/pencil-square.svg",
     "skin/icon-light.svg",
     "skin/eye.svg",
+    "skin/clock.svg",
+    "skin/globe.svg",
+    "skin/key.svg",
     "icon.png"
   ],
 

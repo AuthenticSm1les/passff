@@ -81,11 +81,3 @@
 #passff_notification > div > div > button:hover {
   background-color: #ccc !important;
 }
-
-.passff_popup_frame {
-  all: initial;
-  position: absolute;
-  border: 0;
-  z-index: 1000;
-  height: 10em;
-}

@@ -316,10 +316,15 @@ With the menu open, you can press <kbd>enter</kbd> to execute one of the followi
 
 ### Input menu
 
-PassFF can _mark fillable input fields with the PassFF icon_. It adds an icon in the fields that PassFF can automatically fill. The icon is clickable and pops up a menu to select the password.
-PassFF fills the input fields and optionally submit depending on your preferences. You can always override this behavior by clicking the pencil (Fill) or the paper plane (Fill & Submit).
+**This fork replaces upstream's icon-in-the-field popup with a Firefox-native-style suggestion dropdown.** Focusing or
+clicking a fillable field opens a dropdown right below it, listing matching entries for the current site — a username
+field shows a plain list, a password field additionally labels each entry "From this website" and adds a
+**Manage Passwords** footer that opens PassFF's preferences. If a password field has no matching entries, the
+dropdown instead offers to generate a new password (opening the same window as the toolbar's "+" button). Clicking
+an entry fills the form and, depending on your preferences, submits it.
 
-This feature can be disabled in the preferences.
+This feature can be disabled in the preferences (the "Mark fillable input fields" option, renamed here to reflect
+the new behavior).
 
 ### Contextual menu
 

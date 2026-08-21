@@ -281,7 +281,7 @@ function onNodeAdded() {
     if (urlInBlacklist == -1) {
       inputElements
         .filter((inp) => inp[1] != "")
-        .forEach((inp) => injectIcon(inp[0]));
+        .forEach((inp) => attachDropdownTrigger(inp[0], inp[1]));
     }
   }
 }
@@ -353,220 +353,170 @@ function setInputs(inputs, passwordData) {
   });
 }
 
-// %%%%%%%%%%%%%%% Implementation of input field marker %%%%%%%%%%%%%%%%%%%%%%%%
+// %%%%%%%%%%%%%%% Implementation of the native-style input dropdown %%%%%%%%%%%
 
-function getPassffIcon(light) {
-  return browser.runtime.getURL(`/skin/icon${!!light ? "-light" : ""}.svg`);
+function getPassffIcon() {
+  return browser.runtime.getURL("/skin/icon.svg");
 }
 
-/**
- * Returns true if the element is in RTL direction
- * Falls back to document direction if not explicitly set
- * @param {HTMLElement} el
- * @returns {boolean}
- */
-function isRtl(el) {
-  if (!el) return false;
-  const dir = getComputedStyle(el).direction;
-  return dir === "rtl";
-}
-
-function getIconOffset() {
-  return parseFloat(PassFF.Preferences.iconOffset) || 0;
-}
-
-const ICON_HIT_WIDTH = 22;
-
-function isMouseOverIcon(e) {
-  if (typeof e.target.passffInjected === "undefined") return false;
-  const input = e.target;
-  const rect = input.getBoundingClientRect();
-  const iconOffset = getIconOffset();
-  const rtl = isRtl(input);
-
-  const iconLeft = rtl
-    ? rect.left + iconOffset
-    : rect.right - iconOffset - ICON_HIT_WIDTH;
-  const iconRight = iconLeft + ICON_HIT_WIDTH;
-
-  return e.clientX >= iconLeft && e.clientX <= iconRight;
-}
-
-const ICON_SIZE_PX = 16;
-const ICON_POSITION_INSET_PX = 4;
-
-function setIconBackgroundStyle(input, iconUrl) {
-  const iconOffset = getIconOffset();
-  const rtl = isRtl(input);
-
-  const positionX = rtl
-    ? `${ICON_POSITION_INSET_PX + iconOffset}px`
-    : `calc(100% - ${ICON_POSITION_INSET_PX + iconOffset}px)`;
-
-  Object.assign(input.style, {
-    backgroundImage: `url('${iconUrl}')`,
-    backgroundRepeat: "no-repeat",
-    backgroundAttachment: "scroll",
-    backgroundSize: `${ICON_SIZE_PX}px ${ICON_SIZE_PX}px`,
-    backgroundPosition: `${positionX} 50%`,
-  });
-}
-
-function onIconHover(e) {
-  if (isMouseOverIcon(e)) {
-    setIconBackgroundStyle(e.target, getPassffIcon());
-    e.target.style.cssText += "cursor: pointer !important;";
-
-    /* Set autocomplete attribute to "off", so Firefox' autofill list won't
-     * overlap passff's popup menu. Also save its value beforehand, so it can
-     * be restored when the popup gets dismissed.
-     */
-    if (!e.target.hasAttribute("passff-autocomplete"))
-      e.target.setAttribute(
-        "passff-autocomplete",
-        e.target.getAttribute("autocomplete"),
-      );
-    e.target.setAttribute("autocomplete", "off");
-
-    return;
-  }
-  if (e.target !== popupTarget) resetIcon(e.target);
-  e.target.style.cursor = "auto";
-  if (e.target.hasAttribute("passff-autocomplete"))
-    e.target.setAttribute(
-      "autocomplete",
-      e.target.getAttribute("passff-autocomplete"),
-    );
-}
-
-function onIconClick(e) {
-  if (isMouseOverIcon(e)) openPopup(e.target);
-}
-
-function injectIcon(input) {
-  if (typeof input.passffInjected !== "undefined") return;
-  log.debug("Inject icon", input.id || input.name);
-  input.passffInjected = true;
-  setIconBackgroundStyle(input, getPassffIcon(true));
-  input.addEventListener("mouseout", (e) => {
-    if (e.target !== popupTarget) resetIcon(e.target);
-  });
-  input.addEventListener("mousemove", onIconHover);
-  input.addEventListener("click", onIconClick);
-}
-
-function resetIcon(input) {
-  input.style.backgroundImage = "url('" + getPassffIcon(true) + "')";
-}
-
-// %%%%%%%%%%%%%%% Implementation of input field popup %%%%%%%%%%%%%%%%%%%%%%%%%
-
-let popupFrame = null;
 let popupTarget = null;
+let popupDropdown = null;
 
-function resetPopup(target) {
-  // return true if resetted popupFrame belonged to target
-  let result = target === popupTarget;
-  if (popupTarget !== null) resetIcon(popupTarget);
-  if (result) popupTarget = null;
-  if (popupFrame === null) setupPopup();
-  popupFrame.style.display = "none";
-  popupFrame.style.width = PassFF.Preferences.lookPopupWidth;
-  return result;
+function closeDropdown() {
+  if (popupDropdown && popupDropdown.parentNode) {
+    popupDropdown.parentNode.removeChild(popupDropdown);
+  }
+  popupDropdown = null;
+  popupTarget = null;
+  document.removeEventListener("click", onOutsideClick, true);
+  window.removeEventListener("scroll", closeDropdown, true);
+  window.removeEventListener("resize", closeDropdown, true);
 }
 
-function setupPopup() {
+function onOutsideClick(e) {
+  if (popupDropdown && popupDropdown.contains(e.target)) return;
+  if (e.target === popupTarget) return;
+  closeDropdown();
+}
+
+function attachDropdownTrigger(input, inputType) {
+  if (typeof input.passffInjected !== "undefined") return;
+  log.debug("Attach dropdown trigger", input.id || input.name);
+  input.passffInjected = true;
+  let handler = () => openInputDropdown(input, inputType);
+  input.addEventListener("focus", handler);
+  input.addEventListener("click", handler);
+}
+
+async function collectDropdownEntries() {
+  let entries = [];
+  for (const item of matchItems
+    .filter((i) => i.isLeaf || i.hasFields)
+    .slice(0, 6)) {
+    let passwordData = await PassFF.Pass.getPasswordData(item);
+    if (typeof passwordData === "undefined") continue;
+    entries.push({ item: item, login: passwordData.login });
+  }
+  return entries;
+}
+
+async function openInputDropdown(target, inputType) {
   if (!PassFF.Preferences.markFillable) return;
+  if (popupTarget === target) return; // already open for this field
 
-  // Remove old instances of the popup menu
-  let old = document.querySelector(".passff_popup_frame");
-  if (old) old.parentNode.removeChild(old);
-
-  // Setup new instance
-  popupFrame = document.createElement("iframe");
-  popupFrame.setAttribute(
-    "src",
-    browser.runtime.getURL("content/content-popup.html"),
+  let url = window.location.href;
+  let urlInBlacklist = PassFF.Preferences.markFillableBlacklist.findIndex(
+    (str) => url.indexOf(str) >= 0,
   );
-  popupFrame.classList.add("passff_popup_frame");
-  popupFrame.addEventListener(
-    "load",
-    function () {
-      let doc = popupFrame.contentDocument;
-      let popupMenu = doc.querySelector(".passff_popup_menu");
-      let popupDiv = doc.querySelector(".passff_popup_menu > div");
 
-      /* The following two icons have been taken from
-       *  https://github.com/encharm/Font-Awesome-SVG-PNG (MIT-License)
-       * which provides PNG/SVG versions for Font Awesome icons:
-       *  http://fontawesome.io/ (License: SIL OFL 1.1)
-       */
-      let paperPlane16 = browser.runtime.getURL("/skin/paper-plane.svg");
-      let pencilSquare16 = browser.runtime.getURL("/skin/pencil-square.svg");
+  let entries = urlInBlacklist >= 0 ? [] : await collectDropdownEntries();
+  let offerGenerate =
+    urlInBlacklist < 0 && entries.length === 0 && inputType === "password";
 
-      if (matchItems.length === 0) {
-        let alertEl = doc.createElement("div");
-        alertEl.classList.add("alert");
-        alertEl.textContent = _("passff_no_entries_found");
-        popupMenu.innerHTML = "";
-        popupMenu.appendChild(alertEl);
-      }
-      matchItems
-        .filter((i) => i.isLeaf || i.hasFields)
-        .forEach((item) => {
-          let entry = document.createElement("div");
-          entry.classList.add("passff_entry");
-          entry.passffItem = item;
-          entry.innerHTML = `
-        <!-- display: table-row -->
-        <div><button class="passff_key"><span></span></button></div>
-        <div><button class="passff_fill passff_button"></button></div>
-        <div><button class="passff_submit passff_button"></button></div>
-      `;
-          let button = entry.querySelector(".passff_key span");
-          let fullKey = item.fullKey.replace(/^\//, "");
-          button.textContent = fullKey;
-          button.parentNode.title = fullKey;
-          button.parentNode.addEventListener("click", function (e) {
-            if (PassFF.Preferences.submitFillable) return onPopupSubmitClick(e);
-            return onPopupFillClick(e);
-          });
-          button = entry.querySelector(".passff_fill");
-          button.style.backgroundImage = "url('" + pencilSquare16 + "')";
-          button.addEventListener("click", onPopupFillClick);
-          button = entry.querySelector(".passff_submit");
-          button.style.backgroundImage = "url('" + paperPlane16 + "')";
-          button.addEventListener("click", onPopupSubmitClick);
-          popupDiv.appendChild(entry);
-        });
-    },
-    true,
-  );
-  popupFrame.style.display = "none";
-  document.body.appendChild(popupFrame);
-}
+  // focus may have moved on to a different field while awaiting the above;
+  // whatever was open for the previously-focused field is stale either way
+  if (getActiveElement() !== target) return;
+  closeDropdown();
 
-function openPopup(target) {
-  if (resetPopup(target)) return;
+  if (entries.length === 0 && !offerGenerate) return; // nothing to offer
   popupTarget = target;
 
-  // remove this popup when user clicks somewhere else on the page
-  document.addEventListener("click", function f(e) {
-    if (getPopupEntryItem(e.target) !== null || isMouseOverIcon(e)) return;
-    document.removeEventListener("click", f);
-    resetPopup(target);
-  });
+  let dropdown = document.createElement("div");
+  dropdown.id = "passff_input_dropdown";
 
-  // position popup relative to input field
+  if (offerGenerate) {
+    let row = document.createElement("button");
+    row.type = "button";
+    row.classList.add("passff_input_dropdown_entry");
+    row.innerHTML = `
+      <span class="passff_input_dropdown_entry_icon"></span>
+      <span class="passff_input_dropdown_entry_text">
+        <span class="passff_input_dropdown_entry_primary"></span>
+      </span>
+    `;
+    row.querySelector(
+      ".passff_input_dropdown_entry_icon",
+    ).style.backgroundImage =
+      "url('" + browser.runtime.getURL("/skin/key.svg") + "')";
+    row.querySelector(".passff_input_dropdown_entry_primary").textContent = _(
+      "passff_dropdown_generate_password",
+    );
+    row.addEventListener("click", () => {
+      closeDropdown();
+      PassFF.Pass.newPasswordUI();
+    });
+    dropdown.appendChild(row);
+  } else {
+    let iconUrl = browser.runtime.getURL(
+      `/skin/${inputType === "password" ? "globe" : "clock"}.svg`,
+    );
+    entries.forEach((entry) => {
+      let row = document.createElement("button");
+      row.type = "button";
+      row.classList.add("passff_input_dropdown_entry");
+      row.passffItem = entry.item;
+      row.innerHTML = `
+        <span class="passff_input_dropdown_entry_icon"></span>
+        <span class="passff_input_dropdown_entry_text">
+          <span class="passff_input_dropdown_entry_primary"></span>
+        </span>
+      `;
+      row.querySelector(
+        ".passff_input_dropdown_entry_icon",
+      ).style.backgroundImage = "url('" + iconUrl + "')";
+      row.querySelector(".passff_input_dropdown_entry_primary").textContent =
+        entry.login || entry.item.fullKey.replace(/^\//, "");
+      if (inputType === "password") {
+        let secondary = document.createElement("span");
+        secondary.classList.add("passff_input_dropdown_entry_secondary");
+        secondary.textContent = _("passff_dropdown_from_this_site");
+        row
+          .querySelector(".passff_input_dropdown_entry_text")
+          .appendChild(secondary);
+      }
+      row.addEventListener("click", () => onDropdownEntryClick(entry.item));
+      dropdown.appendChild(row);
+    });
+
+    if (inputType === "password") {
+      let divider = document.createElement("div");
+      divider.classList.add("passff_input_dropdown_divider");
+      dropdown.appendChild(divider);
+
+      let manage = document.createElement("button");
+      manage.type = "button";
+      manage.classList.add("passff_input_dropdown_footer");
+      manage.textContent = _("passff_dropdown_manage_passwords");
+      manage.addEventListener("click", () => {
+        closeDropdown();
+        PassFF.Preferences.openPreferences();
+      });
+      dropdown.appendChild(manage);
+    }
+  }
+
+  document.body.appendChild(dropdown);
+  popupDropdown = dropdown;
+  positionDropdown(dropdown, target);
+
+  setTimeout(() => {
+    document.addEventListener("click", onOutsideClick, true);
+    window.addEventListener("scroll", closeDropdown, true);
+    window.addEventListener("resize", closeDropdown, true);
+  }, 0);
+}
+
+function positionDropdown(dropdown, target) {
+  // `!important` is required here: the root rule's `all: initial !important`
+  // (needed to isolate from host-page CSS) would otherwise beat a plain,
+  // non-important inline style for these same properties, leaving the
+  // dropdown at its static position (end of <body>) instead of anchored to
+  // the field.
   let rect = target.getBoundingClientRect();
-  let popupWidth = window.getComputedStyle(popupFrame).width;
-  popupWidth = parseInt(popupWidth.substring(0, popupWidth.length - 2), 10);
-  let scrollright = window.scrollX - popupWidth;
-  popupFrame.style.top = window.scrollY + rect.bottom + 1 + "px";
-  popupFrame.style.left = scrollright + rect.right - 2 + "px";
-  popupFrame.style.display = "block";
+  dropdown.style.setProperty("top", rect.bottom + 2 + "px", "important");
+  dropdown.style.setProperty("left", rect.left + "px", "important");
+  dropdown.style.setProperty("width", rect.width + "px", "important");
 
-  // get the largest z-index value and position ourselves above it
   let z = Math.max(
     1,
     ...[...document.querySelectorAll("body *")]
@@ -574,41 +524,21 @@ function openPopup(target) {
       .map((e) => parseInt(window.getComputedStyle(e).zIndex, 10))
       .filter((e) => e > 0),
   );
-  popupFrame.style.zIndex = "" + z;
+  dropdown.style.setProperty("z-index", "" + z, "important");
 }
 
-function getPopupEntryItem(target) {
-  let entry = target.parentElement;
-  while (entry && !entry.classList.contains("passff_entry")) {
-    entry = entry.parentElement;
-  }
-  if (!entry) return null;
-  return entry.passffItem;
-}
-
-function onPopupFillClick(e) {
-  let item = getPopupEntryItem(e.target);
-  popupTarget.focus();
-  resetPopup(popupTarget);
+function onDropdownEntryClick(item) {
+  let target = popupTarget;
+  closeDropdown();
+  target.focus();
   PassFF.Pass.getPasswordData(item).then((passwordData) => {
     if (typeof passwordData === "undefined") return;
-    PassFF.Page.fillActiveElement(passwordData);
-  });
-}
-
-function onPopupSubmitClick(e) {
-  let item = getPopupEntryItem(e.target);
-  popupTarget.focus();
-  let formDoc = popupTarget.form;
-  resetPopup(popupTarget);
-  PassFF.Pass.getPasswordData(item)
-    .then((passwordData) => {
-      if (typeof passwordData === "undefined") return;
-      return PassFF.Page.fillActiveElement(passwordData);
-    })
-    .then(() => {
-      PassFF.Page.submit(formDoc);
+    return PassFF.Page.fillActiveElement(passwordData).then(() => {
+      if (PassFF.Preferences.submitFillable) {
+        PassFF.Page.submit(target.form);
+      }
     });
+  });
 }
 
 /* #############################################################################
@@ -963,7 +893,7 @@ export default {
 
   refresh: util.contentFunction("Page.refresh", function () {
     resetMatchItems();
-    setupPopup();
+    closeDropdown();
   }),
 
   // %%%%%%%%%%%%%%%%%%%%%%%%%% URL changer %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

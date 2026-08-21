@@ -121,8 +121,6 @@ let prefParams = {
   recognisedSuffixes: "co.uk,org.uk,me.uk,co.jp,com.au",
   filterPathRegex: "notes\nattributes\nattachments",
   lookMenuWidth: "28rem",
-  lookPopupWidth: "25rem",
-  iconOffset: "0px",
 };
 
 const listParams = {
@@ -288,6 +286,13 @@ let prefObj = {
         });
         return command;
       });
+    },
+  ),
+
+  openPreferences: util.backgroundFunction(
+    "Preferences.openPreferences",
+    function () {
+      return browser.runtime.openOptionsPage();
     },
   ),
 };

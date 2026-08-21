@@ -1,0 +1,119 @@
+/*
+  Each rule re-declares `all: revert` as its own first declaration (see the
+  comment at the top of savePrompt.css for why -- a separate, higher
+  -specificity reset selector silently loses to lower-specificity rules
+  regardless of source order).
+*/
+
+#passff_input_dropdown {
+  all: initial !important;
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  min-width: 12em !important;
+  max-height: 18em !important;
+  overflow-y: auto !important;
+  padding: 0.3em !important;
+  background-color: #2b2d3a !important;
+  border: 1px solid #454859 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  font-family: sans-serif !important;
+  font-size: 10pt !important;
+}
+
+.passff_input_dropdown_entry {
+  all: revert;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  width: 100%;
+  padding: 0.5em 0.6em;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  color: #f2f2f5;
+  text-align: left;
+  cursor: pointer;
+  font-family: sans-serif;
+  font-size: 10pt;
+  box-sizing: border-box;
+}
+
+.passff_input_dropdown_entry:hover {
+  background-color: #3a3d4d;
+}
+
+.passff_input_dropdown_entry_icon {
+  all: revert;
+  display: block;
+  flex: 0 0 auto;
+  width: 1.2em;
+  height: 1.2em;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 1.1em 1.1em;
+  box-sizing: border-box;
+}
+
+.passff_input_dropdown_entry_text {
+  all: revert;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.passff_input_dropdown_entry_primary {
+  all: revert;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #f2f2f5;
+  font-family: sans-serif;
+  font-size: 10pt;
+  box-sizing: border-box;
+}
+
+.passff_input_dropdown_entry_secondary {
+  all: revert;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #a7a9b8;
+  font-family: sans-serif;
+  font-size: 8.5pt;
+  box-sizing: border-box;
+}
+
+.passff_input_dropdown_divider {
+  all: revert;
+  display: block;
+  margin: 0.3em 0.2em;
+  border-top: 1px solid #454859;
+  box-sizing: border-box;
+}
+
+.passff_input_dropdown_footer {
+  all: revert;
+  display: block;
+  width: 100%;
+  padding: 0.55em 0.6em;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  color: #a7a9b8;
+  text-align: left;
+  cursor: pointer;
+  font-family: sans-serif;
+  font-size: 9.5pt;
+  box-sizing: border-box;
+}
+
+.passff_input_dropdown_footer:hover {
+  background-color: #3a3d4d;
+  color: #f2f2f5;
+}

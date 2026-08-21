@@ -101,14 +101,8 @@
   "passff_prefs_look_menu_width": {
     "message": "Toolbar menu width"
   },
-  "passff_prefs_look_popup_width": {
-    "message": "Form popup width"
-  },
-  "passff_prefs_icon_offset": {
-    "message": "Offset of the PassFF icon in input fields (for use with multiple password managers)"
-  },
   "passff_prefs_mark_fillable": {
-    "message": "Mark fillable input fields with the PassFF icon"
+    "message": "Show a suggestion dropdown on fillable input fields"
   },
   "passff_prefs_mark_fillable_blacklist_label": {
     "message": "Don't mark fillable if URL contains one of the strings (comma-separated)"
@@ -344,8 +338,14 @@
       }
     }
   },
-  "passff_no_entries_found": {
-    "message": "No entries matching this URL."
+  "passff_dropdown_from_this_site": {
+    "message": "From this website"
+  },
+  "passff_dropdown_manage_passwords": {
+    "message": "Manage Passwords"
+  },
+  "passff_dropdown_generate_password": {
+    "message": "Generate a secure password"
   },
   "passff_savepassword_title_new": {
     "message": "Save password for $1?"
